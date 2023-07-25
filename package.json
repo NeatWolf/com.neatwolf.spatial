@@ -1,0 +1,31 @@
+{
+  "name": "com.neatwolf.spatial",
+  "version": "0.0.1",
+  "displayName": "NeatWolf Spatial",
+  "description": "A collection of classes regarding space analysis and partitioning.",
+  "unity": "2019.1",
+  "comment__unityRelease__": "0b5",
+  "__documentationUrl": "https://example.com/",
+  "__changelogUrl": "https://example.com/changelog.html",
+  "__licensesUrl": "https://example.com/licensing.html",
+  "__dependencies": {
+    "com.[company-name].some-package": "1.0.0",
+    "com.[company-name].other-package": "2.0.0"
+  },
+  "__keywords": [
+    "keyword1",
+    "keyword2",
+    "keyword3"
+  ],
+  "author": {
+    "name": "Alessandro Salvati",
+    "email": "unity@example.com",
+    "url": "https://www.unity3d.com"
+  },
+  "__repository": {
+    "type": "git",
+    "url": "https://github.com/neatwolf/com.neatwolf.spatial.git"
+  },
+  "type": "library",
+  "hideInEditor": false
+}

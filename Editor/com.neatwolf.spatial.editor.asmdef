@@ -1,0 +1,19 @@
+{
+    "name": "com.neatwolf.spatial.editor",
+    "rootNamespace": "NeatWolf.SpatialAnalysis",
+    "references": [
+        "GUID:ecf1c3b430bcc5946bbcbffb13d17033",
+        "GUID:478a2357cc57436488a56e564b08d223"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
