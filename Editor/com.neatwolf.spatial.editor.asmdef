@@ -1,9 +1,8 @@
 {
     "name": "com.neatwolf.spatial.editor",
-    "rootNamespace": "NeatWolf.SpatialAnalysis",
+    "rootNamespace": "NeatWolf.Spatial.Editor",
     "references": [
-        "GUID:ecf1c3b430bcc5946bbcbffb13d17033",
-        "GUID:478a2357cc57436488a56e564b08d223"
+        "GUID:2a0b2573c344c84429369c27d1de0760"
     ],
     "includePlatforms": [
         "Editor"

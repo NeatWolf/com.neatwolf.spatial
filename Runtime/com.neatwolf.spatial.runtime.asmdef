@@ -1,7 +1,10 @@
 {
     "name": "com.neatwolf.spatial.runtime",
-    "rootNamespace": "NeatWolf.SpatialAnalysis",
-    "references": [],
+    "rootNamespace": "NeatWolf.Spatial",
+    "references": [
+        "GUID:478a2357cc57436488a56e564b08d223",
+        "GUID:d8b63aba1907145bea998dd612889d6b"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
