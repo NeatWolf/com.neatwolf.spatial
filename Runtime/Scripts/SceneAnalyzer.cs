@@ -107,7 +107,7 @@ namespace NeatWolf.Spatial.Analysis
             AssetDatabase.SaveAssets();
 
             OnContextUpdate?.Invoke(context);
-            Debug.Log("Updated  context");
+            //Debug.Log("Updated  context");
         }
 
         // public void UpdateContext()
@@ -119,7 +119,9 @@ namespace NeatWolf.Spatial.Analysis
         public event SceneAnalyzerDelegate OnContextUpdate;
         public event SceneAnalyzerDelegate OnGridAnalyzed;
         public event SceneAnalyzerDelegate OnVolumesAnalyzed;
+#pragma warning disable CS0067
         public event SceneAnalyzerDelegate OnChunksGenerated;
+#pragma warning restore CS0067
         public event SceneAnalyzerDelegate OnAnalyzerDestroyed;
 
         public void InitializeComponents()
