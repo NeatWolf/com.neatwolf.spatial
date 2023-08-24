@@ -47,7 +47,7 @@ namespace NeatWolf.Spatial.Partitioning
 
         internal void InvalidateCache()
         {
-            Parent?.InvalidateCache();
+            Parent?.InvalidateOwnCache();
         }
     }
 
@@ -323,11 +323,16 @@ namespace NeatWolf.Spatial.Partitioning
             return distance <= radius;
         }
 
-        internal void InvalidateCache()
+        internal void InvalidateOwnCache()
         {
             cache.Clear();
             sphereCastCache.Clear();
-            Node?.InvalidateCache();
+        }
+        
+        internal void InvalidateCache()
+        {
+            InvalidateOwnCache();
+
             foreach (var child in Children)
             {
                 child?.InvalidateCache();
@@ -343,16 +348,78 @@ namespace NeatWolf.Spatial.Partitioning
             }
         }
 
+        /// <summary>
+        /// Finds the spatially nearest node in the Octree based on the provided point.
+        /// The term "nearest" in this function refers to the node in the closest leaf or child Octree that the point belongs to.
+        /// Given the properties of the Octree, where each leaf node contains a single data point, this method ensures that 
+        /// if a point is inside a leaf node's region, the data point inside that leaf node is the spatially nearest node to the point.
+        /// </summary>
+        /// <param name="point">The point for which to find the nearest node.</param>
+        /// <returns>The nearest OctreeNode based on the point, or null if no such node is found or if the point is outside the Octree's boundaries.</returns>
         public OctreeNode<T> FindNearestNode(Vector3 point)
         {
+            // Check if the point is inside the current Octree's bounding box.
             if (!IsPointInside(point))
                 return null;
 
+            // If it's a leaf node, return the node inside it (which could be null if the leaf node doesn't contain a node).
             if (IsLeafNode())
                 return Node;
 
+            // If it's not a leaf node, calculate the child index for the point.
             int index = GetChildIndexForPoint(point);
+    
+            // Recursively check the child Octree that the point belongs to.
             return Children[index]?.FindNearestNode(point);
+        }
+        
+        /// <summary>
+        /// Finds the spatially nearest node in the Octree that matches the specified "Enabled" status.
+        /// The term "nearest" in this function refers to the node in the closest leaf or child Octree that the point belongs to.
+        /// Given the properties of the Octree, where each leaf node contains a single data point, this method ensures that 
+        /// if a point is inside a leaf node's region, the data point inside that leaf node is the spatially nearest node to the point.
+        /// </summary>
+        /// <param name="point">The point for which to find the nearest enabled/disabled node.</param>
+        /// <param name="isEnabled">Specifies the "Enabled" status to search for. If true (default), searches for the nearest enabled node, else searches for the nearest disabled node.</param>
+        /// <returns>The nearest enabled/disabled OctreeNode based on the point and isEnabled parameter, or null if no such node is found.</returns>
+        public OctreeNode<T> FindNearestEnabledNode(Vector3 point, bool isEnabled = true)
+        {
+            // Check if the point is inside the current Octree's bounding box.
+            if (!IsPointInside(point))
+                return null;
+
+            // If it's a leaf node, check if the node's Enabled status matches the desired status.
+            if (IsLeafNode())
+            {
+                if (Node != null && Node.Enabled == isEnabled)
+                    return Node;
+                else
+                    return null;
+            }
+
+            // If it's not a leaf node, calculate the child index for the point and check that child.
+            int index = GetChildIndexForPoint(point);
+            OctreeNode<T> nearestNode = Children[index]?.FindNearestEnabledNode(point, isEnabled);
+
+            // If a matching node is found in the immediate child, return it.
+            if (nearestNode != null)
+                return nearestNode;
+
+            // If the immediate child doesn't have a node that matches the enabled criteria, check other children.
+            for (int i = 0; i < 8; i++)
+            {
+                // Skip the child which was just checked.
+                if (i == index) continue;
+                
+                nearestNode = Children[i]?.FindNearestEnabledNode(point, isEnabled);
+
+                // If a matching node is found in any of the other children, return it.
+                if (nearestNode != null)
+                    return nearestNode;
+            }
+
+            // If no matching node is found in any child, return null.
+            return null;
         }
 
         public bool NodeExistsAt(Vector3 point)
