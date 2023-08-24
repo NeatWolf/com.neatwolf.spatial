@@ -26,6 +26,7 @@
     "type": "git",
     "url": "https://github.com/neatwolf/com.neatwolf.spatial.git"
   },
+  "testables": ["com.neatwolf.spatial"],
   "type": "library",
   "hideInEditor": false
 }
