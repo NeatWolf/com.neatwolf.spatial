@@ -98,6 +98,14 @@ namespace NeatWolf.Spatial.Partitioning
         [SerializeField] private int minPoints;
         [SerializeField] private Vector3 origin;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Octree{T}"/> class with the specified parameters.
+        /// </summary>
+        /// <param name="origin">The origin of the Octree.</param>
+        /// <param name="halfDimension">The half dimensions of the Octree.</param>
+        /// <param name="maxDepth">The maximum depth of the Octree.</param>
+        /// <param name="minPoints">The minimum number of points in a node before it is subdivided.</param>
+        /// <param name="maxPoints">The maximum number of points in a node before it is subdivided.</param>
         public Octree(Vector3 origin, Vector3 halfDimension, int maxDepth, int minPoints, int maxPoints)
         {
             this.origin = origin;
@@ -110,11 +118,20 @@ namespace NeatWolf.Spatial.Partitioning
             Children = new Octree<T>[8];
         }
 
+        /// <summary>
+        /// Determines whether this Octree is a leaf node.
+        /// </summary>
+        /// <returns><c>true</c> if this Octree is a leaf node; otherwise, <c>false</c>.</returns>
         public bool IsLeafNode()
         {
             return depth >= maxDepth || Children[0] == null;
         }
 
+        /// <summary>
+        /// Inserts a node with the specified position and data into the Octree.
+        /// </summary>
+        /// <param name="position">The position of the node.</param>
+        /// <param name="data">The data of the node.</param>
         public void Insert(Vector3 position, T data)
         {
             if (IsLeafNode())
@@ -142,6 +159,10 @@ namespace NeatWolf.Spatial.Partitioning
             }
         }
 
+        /// <summary>
+        /// Removes the node at the specified position from the Octree.
+        /// </summary>
+        /// <param name="position">The position of the node.</param>
         public void Remove(Vector3 position)
         {
             if (IsLeafNode())
@@ -176,6 +197,10 @@ namespace NeatWolf.Spatial.Partitioning
             }
         }
 
+        /// <summary>
+        /// Determines whether the Octree should merge its child Octrees.
+        /// </summary>
+        /// <returns><c>true</c> if the Octree should merge its child Octrees; otherwise, <c>false</c>.</returns>
         private bool ShouldMerge()
         {
             foreach (var child in Children)
@@ -189,6 +214,11 @@ namespace NeatWolf.Spatial.Partitioning
             return true;
         }
 
+        /// <summary>
+        /// Queries the Octree for a node at the specified position.
+        /// </summary>
+        /// <param name="position">The position to query.</param>
+        /// <returns>The node at the specified position, or <c>null</c> if no node exists at the position.</returns>
         public OctreeNode<T> Query(Vector3 position)
         {
             if (ContainsPoint(position))
@@ -204,8 +234,13 @@ namespace NeatWolf.Spatial.Partitioning
             return null;
         }
 
-        // Note: The `SphereCast` method could potentially return duplicate nodes if for some reason the same node is contained in multiple child Octrees.
-        // A way to avoid this would be to use a `HashSet` instead of a `List` to store the result.
+        /// <summary>
+        /// Performs a sphere cast on the Octree and returns all nodes within the specified radius of the center.
+        /// This method may return duplicate nodes if the same node is contained in multiple child Octrees.
+        /// </summary>
+        /// <param name="center">The center of the sphere cast.</param>
+        /// <param name="radius">The radius of the sphere cast.</param>
+        /// <returns>A set of nodes within the specified radius of the center.</returns>
         public HashSet<OctreeNode<T>> SphereCastWithDuplicates(Vector3 center, float radius)
         {
             var result = new HashSet<OctreeNode<T>>();
@@ -223,6 +258,12 @@ namespace NeatWolf.Spatial.Partitioning
             return result;
         }
         
+        /// <summary>
+        /// Performs a sphere cast on the Octree and returns all nodes within the specified radius of the center.
+        /// </summary>
+        /// <param name="center">The center of the sphere cast.</param>
+        /// <param name="radius">The radius of the sphere cast.</param>
+        /// <returns>A list of nodes within the specified radius of the center.</returns>
         public List<OctreeNode<T>> SphereCast(Vector3 center, float radius)
         {
             var result = new List<OctreeNode<T>>();
@@ -240,6 +281,11 @@ namespace NeatWolf.Spatial.Partitioning
             return result;
         }
 
+        /// <summary>
+        /// Finds the nearest node to the specified position.
+        /// </summary>
+        /// <param name="position">The position to find the nearest node to.</param>
+        /// <returns>The nearest node to the specified position, or <c>null</c> if no nodes exist in the Octree.</returns>
         public OctreeNode<T> FindNearestNode(Vector3 position)
         {
             OctreeNode<T> nearestNode = null;
@@ -273,6 +319,12 @@ namespace NeatWolf.Spatial.Partitioning
             return nearestNode;
         }
 
+        /// <summary>
+        /// Finds the nearest enabled node to the specified position.
+        /// </summary>
+        /// <param name="position">The position to find the nearest enabled node to.</param>
+        /// <param name="enabledStatus">The enabled status to match. Defaults to <c>true</c>.</param>
+        /// <returns>The nearest enabled node to the specified position, or <c>null</c> if no enabled nodes exist in the Octree.</returns>
         public OctreeNode<T> FindNearestEnabledNode(Vector3 position, bool enabledStatus = true)
         {
             OctreeNode<T> nearestNode = null;
@@ -307,8 +359,11 @@ namespace NeatWolf.Spatial.Partitioning
             return nearestNode;
         }
 
-        // This could potentially return incorrect results if the Octree is not a leaf node and the node is contained in a different child Octree than the one that contains the point.
-        // A way to fix this would be to search all child Octrees, not just the one that contains the point.
+        /// <summary>
+        /// Determines whether a node exists at the specified position.
+        /// </summary>
+        /// <param name="position">The position to check for a node.</param>
+        /// <returns><c>true</c> if a node exists at the specified position; otherwise, <c>false</c>.</returns>
         public bool NodeExistsAt(Vector3 position)
         {
             if (Query(position) != null)
@@ -330,6 +385,9 @@ namespace NeatWolf.Spatial.Partitioning
             return false;
         }
 
+        /// <summary>
+        /// Subdivides the Octree into eight child Octrees.
+        /// </summary>
         private void Subdivide()
         {
             if (depth >= maxDepth)
