@@ -117,26 +117,7 @@ namespace NeatWolf.Spatial.Partitioning
 
         public void Insert(Vector3 position, T data)
         {
-            int attempts = 0; // Counter for insertion attempts
-
-            while (depth < maxDepth)
-            {
-                if (IsLeafNode())
-                {
-                    Subdivide();
-                }
-
-                GetOctantContainingPoint(position).Insert(position, data);
-
-                attempts++;
-                if (attempts > MAX_INSERTION_ATTEMPTS)
-                {
-                    Debug.LogWarning("Max insertion attempts reached. Breaking the loop to prevent infinite loop.");
-                    break;
-                }
-            }
-
-            if (attempts <= MAX_INSERTION_ATTEMPTS)
+            if (IsLeafNode())
             {
                 Nodes.Add(new OctreeNode<T>(position, data));
                 if (Nodes.Count > maxPoints && depth < maxDepth)
@@ -144,6 +125,10 @@ namespace NeatWolf.Spatial.Partitioning
                     Subdivide();
                     Nodes.Clear();
                 }
+            }
+            else
+            {
+                GetOctantContainingPoint(position)?.Insert(position, data);
             }
         }
 
@@ -298,6 +283,7 @@ namespace NeatWolf.Spatial.Partitioning
         {
             for (var i = 0; i < 8; i++)
             {
+                Children[i]?.Nodes.Clear();
                 var newOrigin = origin;
                 newOrigin.x += halfDimension.x * (i & 1);
                 newOrigin.y += halfDimension.y * ((i >> 1) & 1);
@@ -305,7 +291,7 @@ namespace NeatWolf.Spatial.Partitioning
                 Children[i] = new Octree<T>(newOrigin, halfDimension * 0.5f, maxDepth, minPoints, maxPoints);
             }
 
-            Nodes.ForEach(node => GetOctantContainingPoint(node.Position).Insert(node.Position, node.Data));
+            Nodes.ForEach(node => GetOctantContainingPoint(node.Position)?.Insert(node.Position, node.Data));
             Nodes.Clear();
         }
 
@@ -331,7 +317,7 @@ namespace NeatWolf.Spatial.Partitioning
             if (point.x > origin.x) index |= 1;
             if (point.y > origin.y) index |= 2;
             if (point.z > origin.z) index |= 4;
-            return Children[index];
+            return Children[index] != null ? Children[index] : null;
         }
         
         public string ToJson()
