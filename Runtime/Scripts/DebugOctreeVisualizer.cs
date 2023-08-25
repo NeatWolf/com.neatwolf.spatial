@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NeatWolf.Spatial.Partitioning;
 using UnityEngine;
 
@@ -24,7 +25,7 @@ namespace NeatWolf.Spatial
         {
             if (octree.IsLeafNode())
             {
-                DrawLeafNode(octree);
+                DrawLeafNodes(octree.Nodes); // Draw all leaf nodes
             }
             else
             {
@@ -39,21 +40,25 @@ namespace NeatWolf.Spatial
             }
         }
 
+        private void DrawLeafNodes(List<OctreeNode<GameObject>> nodes)
+        {
+            Gizmos.color = LeafNodeColor;
+            foreach (var node in nodes)
+            {
+                DrawCube(node.Position, Vector3.one * NodeSize);
+                if (node.Data != null)
+                {
+                    Gizmos.DrawLine(node.Position, node.Data.transform.position);
+                }
+            }
+        }
+
+
         private void DrawNode(Octree<GameObject> octree, int depth) // Add depth parameter
         {
             // Lerp between NodeColor and DepthColor based on depth
             Gizmos.color = Color.Lerp(NodeColor, DepthColor, depth / 10.0f);
             DrawCube(octree.Origin, octree.HalfDimension * 2);
-        }
-
-        private void DrawLeafNode(Octree<GameObject> octree)
-        {
-            Gizmos.color = LeafNodeColor;
-            DrawCube(octree.Origin, Vector3.one * NodeSize);
-            if (octree.Node != null && octree.Node.Data != null)
-            {
-                Gizmos.DrawLine(octree.Origin, octree.Node.Data.transform.position);
-            }
         }
 
         private void DrawCube(Vector3 center, Vector3 size)
