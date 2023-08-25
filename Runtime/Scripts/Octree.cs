@@ -69,6 +69,8 @@ namespace NeatWolf.Spatial.Partitioning
     [Serializable]
     public class Octree<T>
     {
+        private const int MAX_INSERTION_ATTEMPTS = 1000; // Class constant to prevent infinite loop
+        
         /// <summary>
         /// Gets the origin of the Octree.
         /// </summary>
@@ -115,28 +117,75 @@ namespace NeatWolf.Spatial.Partitioning
 
         public void Insert(Vector3 position, T data)
         {
-            if (depth >= maxDepth || Nodes.Count < maxPoints)
+            int attempts = 0; // Counter for insertion attempts
+
+            while (depth < maxDepth)
             {
-                Nodes.Add(new OctreeNode<T>(position, data));
-                return;
+                if (IsLeafNode())
+                {
+                    Subdivide();
+                }
+
+                GetOctantContainingPoint(position).Insert(position, data);
+
+                attempts++;
+                if (attempts > MAX_INSERTION_ATTEMPTS)
+                {
+                    Debug.LogWarning("Max insertion attempts reached. Breaking the loop to prevent infinite loop.");
+                    break;
+                }
             }
 
-            Subdivide();
-            GetOctantContainingPoint(position).Insert(position, data);
+            if (attempts <= MAX_INSERTION_ATTEMPTS)
+            {
+                Nodes.Add(new OctreeNode<T>(position, data));
+                if (Nodes.Count > maxPoints && depth < maxDepth)
+                {
+                    Subdivide();
+                    Nodes.Clear();
+                }
+            }
         }
 
         public void Remove(Vector3 position)
         {
-            var index = Nodes.FindIndex(node => node.Position == position);
-            if (index >= 0)
+            if (IsLeafNode())
             {
-                Nodes.RemoveAt(index);
-                if (Nodes.Count < minPoints && depth > 0) Merge();
+                var index = Nodes.FindIndex(node => node.Position == position);
+                if (index >= 0)
+                {
+                    Nodes.RemoveAt(index);
+                }
             }
             else
             {
-                GetOctantContainingPoint(position)?.Remove(position);
+                var childOctree = GetOctantContainingPoint(position);
+                if (childOctree != null)
+                {
+                    if (childOctree.NodeExistsAt(position))
+                    {
+                        childOctree.Remove(position);
+
+                        if (ShouldMerge())
+                        {
+                            Merge();
+                        }
+                    }
+                }
             }
+        }
+
+        private bool ShouldMerge()
+        {
+            foreach (var child in Children)
+            {
+                if (child != null && child.Nodes.Count > 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public OctreeNode<T> Query(Vector3 position)
@@ -147,7 +196,8 @@ namespace NeatWolf.Spatial.Partitioning
                     if (node.Position == position)
                         return node;
 
-                return GetOctantContainingPoint(position)?.Query(position);
+                var octant = GetOctantContainingPoint(position);
+                return octant != null ? octant.Query(position) : null;
             }
 
             return null;
@@ -156,12 +206,12 @@ namespace NeatWolf.Spatial.Partitioning
         public List<OctreeNode<T>> SphereCast(Vector3 center, float radius)
         {
             var result = new List<OctreeNode<T>>();
-            if (IntersectsSphere(center, radius))
-            {
-                foreach (var node in Nodes)
-                    if (Vector3.Distance(center, node.Position) <= radius)
-                        result.Add(node);
+            foreach (var node in Nodes)
+                if (Vector3.Distance(center, node.Position) <= radius)
+                    result.Add(node);
 
+            if (!IsLeafNode())
+            {
                 foreach (var child in Children)
                     if (child != null)
                         result.AddRange(child.SphereCast(center, radius));
@@ -172,11 +222,44 @@ namespace NeatWolf.Spatial.Partitioning
 
         public OctreeNode<T> FindNearestNode(Vector3 position)
         {
-            if (ContainsPoint(position))
+            OctreeNode<T> nearestNode = null;
+            var nearestDistance = float.MaxValue;
+            foreach (var node in Nodes)
             {
-                var nearestNode = Nodes[0];
-                var nearestDistance = Vector3.Distance(nearestNode.Position, position);
-                foreach (var node in Nodes)
+                var distance = Vector3.Distance(node.Position, position);
+                if (distance < nearestDistance)
+                {
+                    nearestNode = node;
+                    nearestDistance = distance;
+                }
+            }
+
+            if (!IsLeafNode())
+            {
+                var childOctree = GetOctantContainingPoint(position);
+                if (childOctree != null)
+                {
+                    var childNearestNode = childOctree.FindNearestNode(position);
+                    if (childNearestNode != null)
+                    {
+                        var childNearestDistance = Vector3.Distance(childNearestNode.Position, position);
+                        if (childNearestDistance < nearestDistance)
+                        {
+                            nearestNode = childNearestNode;
+                        }
+                    }
+                }
+            }
+
+            return nearestNode;
+        }
+
+        public OctreeNode<T> FindNearestEnabledNode(Vector3 position, bool enabledStatus = true)
+        {
+            OctreeNode<T> nearestNode = null;
+            var nearestDistance = float.MaxValue;
+            foreach (var node in Nodes)
+                if (node.Enabled == enabledStatus)
                 {
                     var distance = Vector3.Distance(node.Position, position);
                     if (distance < nearestDistance)
@@ -186,33 +269,24 @@ namespace NeatWolf.Spatial.Partitioning
                     }
                 }
 
-                return nearestNode;
-            }
-
-            return null;
-        }
-
-        public OctreeNode<T> FindNearestEnabledNode(Vector3 position, bool enabledStatus = true)
-        {
-            if (ContainsPoint(position))
+            if (!IsLeafNode())
             {
-                OctreeNode<T> nearestNode = null;
-                var nearestDistance = float.MaxValue;
-                foreach (var node in Nodes)
-                    if (node.Enabled == enabledStatus)
+                var childOctree = GetOctantContainingPoint(position);
+                if (childOctree != null)
+                {
+                    var childNearestNode = childOctree.FindNearestEnabledNode(position, enabledStatus);
+                    if (childNearestNode != null)
                     {
-                        var distance = Vector3.Distance(node.Position, position);
-                        if (distance < nearestDistance)
+                        var childNearestDistance = Vector3.Distance(childNearestNode.Position, position);
+                        if (childNearestDistance < nearestDistance)
                         {
-                            nearestNode = node;
-                            nearestDistance = distance;
+                            nearestNode = childNearestNode;
                         }
                     }
-
-                return nearestNode;
+                }
             }
 
-            return null;
+            return nearestNode;
         }
 
         public bool NodeExistsAt(Vector3 position)
@@ -237,7 +311,11 @@ namespace NeatWolf.Spatial.Partitioning
 
         private void Merge()
         {
-            foreach (var child in Children) Nodes.AddRange(child.Nodes);
+            foreach (var child in Children)
+            {
+                Nodes.AddRange(child.Nodes);
+                child.Nodes.Clear();
+            }
         }
 
         private bool ContainsPoint(Vector3 point)
@@ -255,33 +333,31 @@ namespace NeatWolf.Spatial.Partitioning
             if (point.z > origin.z) index |= 4;
             return Children[index];
         }
-
-        private bool IntersectsSphere(Vector3 center, float radius)
-        {
-            float minSquaredDistance = 0; // its full meaning would be minSquaredDistanceToBoundingBox
-            if (center.x < origin.x - halfDimension.x)
-                minSquaredDistance += (center.x - origin.x + halfDimension.x) * (center.x - origin.x + halfDimension.x);
-            else if (center.x > origin.x + halfDimension.x)
-                minSquaredDistance += (center.x - origin.x - halfDimension.x) * (center.x - origin.x - halfDimension.x);
-            if (center.y < origin.y - halfDimension.y)
-                minSquaredDistance += (center.y - origin.y + halfDimension.y) * (center.y - origin.y + halfDimension.y);
-            else if (center.y > origin.y + halfDimension.y)
-                minSquaredDistance += (center.y - origin.y - halfDimension.y) * (center.y - origin.y - halfDimension.y);
-            if (center.z < origin.z - halfDimension.z)
-                minSquaredDistance += (center.z - origin.z + halfDimension.z) * (center.z - origin.z + halfDimension.z);
-            else if (center.z > origin.z + halfDimension.z)
-                minSquaredDistance += (center.z - origin.z - halfDimension.z) * (center.z - origin.z - halfDimension.z);
-            return minSquaredDistance <= radius * radius;
-        }
         
         public string ToJson()
         {
-            return JsonUtility.ToJson(this);
+            try
+            {
+                return JsonUtility.ToJson(this);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to serialize Octree: " + e.Message);
+                return null;
+            }
         }
 
         public static Octree<T> FromJson(string json)
         {
-            return JsonUtility.FromJson<Octree<T>>(json);
+            try
+            {
+                return JsonUtility.FromJson<Octree<T>>(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to deserialize Octree: " + e.Message);
+                return null;
+            }
         }
     }
 }
