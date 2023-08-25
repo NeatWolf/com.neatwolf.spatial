@@ -128,7 +128,17 @@ namespace NeatWolf.Spatial.Partitioning
             }
             else
             {
-                GetOctantContainingPoint(position)?.Insert(position, data);
+                var childOctree = GetOctantContainingPoint(position);
+                if (childOctree != null)
+                {
+                    childOctree.Insert(position, data);
+                }
+                else
+                {
+                    // Handle case where no child Octree contains the point
+                    // This could involve creating a new child Octree, or inserting the node into this Octree
+                    Debug.LogWarning("Octree insert: no child Octree contains the point");
+                }
             }
         }
 
@@ -156,6 +166,12 @@ namespace NeatWolf.Spatial.Partitioning
                             Merge();
                         }
                     }
+                }
+                else
+                {
+                    // Handle case where no child Octree contains the point
+                    // This could involve searching all child Octrees, or doing nothing if the node is not in the Octree
+                    Debug.LogWarning("Octree remove: no child Octree contains the point");
                 }
             }
         }
@@ -188,6 +204,25 @@ namespace NeatWolf.Spatial.Partitioning
             return null;
         }
 
+        // Note: The `SphereCast` method could potentially return duplicate nodes if for some reason the same node is contained in multiple child Octrees.
+        // A way to avoid this would be to use a `HashSet` instead of a `List` to store the result.
+        public HashSet<OctreeNode<T>> SphereCastWithDuplicates(Vector3 center, float radius)
+        {
+            var result = new HashSet<OctreeNode<T>>();
+            foreach (var node in Nodes)
+                if (Vector3.Distance(center, node.Position) <= radius)
+                    result.Add(node);
+
+            if (!IsLeafNode())
+            {
+                foreach (var child in Children)
+                    if (child != null)
+                        result.UnionWith(child.SphereCastWithDuplicates(center, radius));
+            }
+
+            return result;
+        }
+        
         public List<OctreeNode<T>> SphereCast(Vector3 center, float radius)
         {
             var result = new List<OctreeNode<T>>();
@@ -221,10 +256,9 @@ namespace NeatWolf.Spatial.Partitioning
 
             if (!IsLeafNode())
             {
-                var childOctree = GetOctantContainingPoint(position);
-                if (childOctree != null)
+                foreach (var child in Children)
                 {
-                    var childNearestNode = childOctree.FindNearestNode(position);
+                    var childNearestNode = child.FindNearestNode(position);
                     if (childNearestNode != null)
                     {
                         var childNearestDistance = Vector3.Distance(childNearestNode.Position, position);
@@ -256,10 +290,9 @@ namespace NeatWolf.Spatial.Partitioning
 
             if (!IsLeafNode())
             {
-                var childOctree = GetOctantContainingPoint(position);
-                if (childOctree != null)
+                foreach (var child in Children)
                 {
-                    var childNearestNode = childOctree.FindNearestEnabledNode(position, enabledStatus);
+                    var childNearestNode = child.FindNearestEnabledNode(position, enabledStatus);
                     if (childNearestNode != null)
                     {
                         var childNearestDistance = Vector3.Distance(childNearestNode.Position, position);
@@ -274,13 +307,36 @@ namespace NeatWolf.Spatial.Partitioning
             return nearestNode;
         }
 
+        // This could potentially return incorrect results if the Octree is not a leaf node and the node is contained in a different child Octree than the one that contains the point.
+        // A way to fix this would be to search all child Octrees, not just the one that contains the point.
         public bool NodeExistsAt(Vector3 position)
         {
-            return Query(position) != null;
+            if (Query(position) != null)
+            {
+                return true;
+            }
+
+            if (!IsLeafNode())
+            {
+                foreach (var child in Children)
+                {
+                    if (child.NodeExistsAt(position))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private void Subdivide()
         {
+            if (depth >= maxDepth)
+            {
+                return;
+            }
+
             for (var i = 0; i < 8; i++)
             {
                 Children[i]?.Nodes.Clear();
@@ -297,6 +353,11 @@ namespace NeatWolf.Spatial.Partitioning
 
         private void Merge()
         {
+            if (IsLeafNode())
+            {
+                return;
+            }
+
             foreach (var child in Children)
             {
                 Nodes.AddRange(child.Nodes);
