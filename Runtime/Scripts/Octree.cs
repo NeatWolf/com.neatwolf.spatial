@@ -341,9 +341,9 @@ namespace NeatWolf.Spatial.Partitioning
             {
                 Children[i]?.Nodes.Clear();
                 var newOrigin = origin;
-                newOrigin.x += halfDimension.x * (i & 1);
-                newOrigin.y += halfDimension.y * ((i >> 1) & 1);
-                newOrigin.z += halfDimension.z * ((i >> 2) & 1);
+                newOrigin.x += halfDimension.x * ((i & 1) == 0 ? -0.5f : 0.5f);
+                newOrigin.y += halfDimension.y * ((i & 2) == 0 ? -0.5f : 0.5f);
+                newOrigin.z += halfDimension.z * ((i & 4) == 0 ? -0.5f : 0.5f);
                 Children[i] = new Octree<T>(newOrigin, halfDimension * 0.5f, maxDepth, minPoints, maxPoints);
             }
 
