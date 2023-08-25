@@ -114,7 +114,7 @@ namespace NeatWolf.Spatial.Partitioning
         /// <summary>
         ///     Gets the nodes within this Octree.
         /// </summary>
-        public List<OctreeNode<T>> Nodes { get; }
+        public List<OctreeNode<T>> Nodes { get; private set; }
 
         /// <summary>
         ///     Determines whether this Octree is a leaf node.
@@ -130,8 +130,13 @@ namespace NeatWolf.Spatial.Partitioning
         /// </summary>
         /// <param name="position">The position of the node.</param>
         /// <param name="data">The data of the node.</param>
-        public void Insert(Vector3 position, T data)
+        /// <returns>True if the node was inserted successfully, false otherwise.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when the position is out of bounds.</exception>
+        public bool Insert(Vector3 position, T data)
         {
+            if (!ContainsPoint(position))
+                throw new ArgumentOutOfRangeException(nameof(position), "Octree insert: point is out of bounds");
+
             if (IsLeafNode())
             {
                 Nodes.Add(new OctreeNode<T>(position, data));
@@ -140,49 +145,48 @@ namespace NeatWolf.Spatial.Partitioning
                     Subdivide();
                     Nodes.Clear();
                 }
+
+                return true;
             }
-            else
-            {
-                var childOctree = GetOctantContainingPoint(position);
-                if (childOctree != null)
-                    childOctree.Insert(position, data);
-                else
-                    // Handle case where no child Octree contains the point
-                    // This could involve creating a new child Octree, or inserting the node into this Octree
-                    Debug.LogWarning("Octree insert: no child Octree contains the point");
-            }
+
+            var childOctree = GetOctantContainingPoint(position);
+            return childOctree != null && childOctree.Insert(position, data);
         }
 
         /// <summary>
         ///     Removes the node at the specified position from the Octree.
         /// </summary>
         /// <param name="position">The position of the node.</param>
-        public void Remove(Vector3 position)
+        /// <returns>True if the node was removed successfully, false otherwise.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when the position is out of bounds.</exception>
+        public bool Remove(Vector3 position)
         {
+            if (!ContainsPoint(position))
+                throw new ArgumentOutOfRangeException(nameof(position), "Octree remove: point is out of bounds");
+
             if (IsLeafNode())
             {
                 var index = Nodes.FindIndex(node => node.Position == position);
-                if (index >= 0) Nodes.RemoveAt(index);
-            }
-            else
-            {
-                var childOctree = GetOctantContainingPoint(position);
-                if (childOctree != null)
+                if (index >= 0)
                 {
-                    if (childOctree.NodeExistsAt(position))
-                    {
-                        childOctree.Remove(position);
+                    Nodes.RemoveAt(index);
+                    return true;
+                }
 
-                        if (ShouldMerge()) Merge();
-                    }
-                }
-                else
-                {
-                    // Handle case where no child Octree contains the point
-                    // This could involve searching all child Octrees, or doing nothing if the node is not in the Octree
-                    Debug.LogWarning("Octree remove: no child Octree contains the point");
-                }
+                return false;
             }
+
+            var childOctree = GetOctantContainingPoint(position);
+            if (childOctree != null)
+                if (childOctree.NodeExistsAt(position))
+                {
+                    childOctree.Remove(position);
+
+                    if (ShouldMerge()) Merge();
+                    return true;
+                }
+
+            return false;
         }
 
         /// <summary>
@@ -205,18 +209,18 @@ namespace NeatWolf.Spatial.Partitioning
         /// <returns>The node at the specified position, or <c>null</c> if no node exists at the position.</returns>
         public OctreeNode<T> Query(Vector3 position)
         {
-            if (ContainsPoint(position))
+            if (!ContainsPoint(position))
             {
-                foreach (var node in Nodes)
-                    if (node.Position == position)
-                        return node;
-
-                var octant = GetOctantContainingPoint(position);
-                //return octant != null ? octant.Query(position) : null;
-                return octant?.Query(position);
+                Debug.LogWarning("Octree query: point is out of bounds");
+                return null;
             }
 
-            return null;
+            foreach (var node in Nodes)
+                if (node.Position == position)
+                    return node;
+
+            var octant = GetOctantContainingPoint(position);
+            return octant?.Query(position);
         }
 
         /// <summary>
@@ -360,6 +364,11 @@ namespace NeatWolf.Spatial.Partitioning
         ///     This method is used when the number of nodes in the Octree exceeds the maximum limit.
         ///     Each child Octree represents an octant of the current Octree.
         /// </summary>
+        /// <summary>
+        ///     Subdivides the Octree into eight child Octrees.
+        ///     This method is used when the number of nodes in the Octree exceeds the maximum limit.
+        ///     Each child Octree represents an octant of the current Octree.
+        /// </summary>
         private void Subdivide()
         {
             if (depth >= maxDepth) return;
@@ -374,6 +383,7 @@ namespace NeatWolf.Spatial.Partitioning
                 Children[i] = new Octree<T>(newOrigin, halfDimension * 0.5f, maxDepth, minPoints, maxPoints);
             }
 
+            // Re-insert nodes into the correct child Octrees
             Nodes.ForEach(node => GetOctantContainingPoint(node.Position)?.Insert(node.Position, node.Data));
             Nodes.Clear();
         }
@@ -388,10 +398,11 @@ namespace NeatWolf.Spatial.Partitioning
             if (IsLeafNode()) return;
 
             foreach (var child in Children)
-            {
-                Nodes.AddRange(child.Nodes);
-                child.Nodes.Clear();
-            }
+                if (child != null)
+                {
+                    Nodes.AddRange(child.Nodes);
+                    child.Nodes.Clear();
+                }
         }
 
         /// <summary>
@@ -406,53 +417,93 @@ namespace NeatWolf.Spatial.Partitioning
                    point.z >= origin.z - halfDimension.z && point.z <= origin.z + halfDimension.z;
         }
 
+        /*/// <summary>
+        ///     Gets the child Octree (octant) that contains the point.
+        /// </summary>
+        /// <param name="point">The point to check.</param>
+        /// <returns>The child Octree that contains the point, or null if no child Octree contains the point.</returns>
+        */
+        // private Octree<T> GetOctantContainingPoint(Vector3 point)
+        // {
+        //     var index = 0;
+        //     if (point.x > origin.x) index |= 1;
+        //     if (point.y > origin.y) index |= 2;
+        //     if (point.z > origin.z) index |= 4;
+        //     return Children[index] != null ? Children[index] : null;
+        // }
+
         /// <summary>
         ///     Gets the child Octree (octant) that contains the point.
+        ///     More readable version.
         /// </summary>
         /// <param name="point">The point to check.</param>
         /// <returns>The child Octree that contains the point, or null if no child Octree contains the point.</returns>
         private Octree<T> GetOctantContainingPoint(Vector3 point)
         {
+            // Determine which octant of the space should contain the point.
             var index = 0;
-            if (point.x > origin.x) index |= 1;
-            if (point.y > origin.y) index |= 2;
-            if (point.z > origin.z) index |= 4;
+            if (point.x > origin.x) index += 1;
+            if (point.y > origin.y) index += 2;
+            if (point.z > origin.z) index += 4;
+
+            // Return the child octree at the computed index if it exists, otherwise return null.
             return Children[index] != null ? Children[index] : null;
         }
 
         /// <summary>
         ///     Converts the Octree to a JSON string.
+        ///     This method uses Unity's JsonUtility by default, but can be overridden in a subclass to use a different
+        ///     serialization library.
+        ///     If the NEWTONSOFT_JSON symbol is defined in the project settings, Newtonsoft.Json will be used instead.
+        ///     Newtonsoft.Json can be installed via the NuGet package manager in Visual Studio, or downloaded directly from the
+        ///     Newtonsoft website.
         /// </summary>
-        /// <returns>A JSON string representing the Octree.</returns>
-        /// <exception cref="Exception">Thrown when the Octree fails to serialize.</exception>
-        public string ToJson()
+        /// <returns>A JSON string representing the Octree. If serialization fails, an empty string is returned.</returns>
+        public virtual string ToJson()
         {
             try
             {
+#if NEWTONSOFT_JSON
+        return Newtonsoft.Json.JsonConvert.SerializeObject(this);
+#else
                 return JsonUtility.ToJson(this);
+#endif
             }
             catch (Exception e)
             {
-                Debug.LogError("Failed to serialize Octree: " + e.Message);
-                return null;
+                Debug.LogWarning("Failed to serialize Octree: " + e.Message);
+                return string.Empty;
             }
         }
 
         /// <summary>
         ///     Creates an instance of the Octree class from a JSON string.
+        ///     This method uses Unity's JsonUtility by default, but can be overridden in a subclass to use a different
+        ///     deserialization library.
+        ///     If the NEWTONSOFT_JSON symbol is defined in the project settings, Newtonsoft.Json will be used instead.
+        ///     Newtonsoft.Json can be installed via the NuGet package manager in Visual Studio, or downloaded directly from the
+        ///     Newtonsoft website.
+        ///     Note: This method cannot be made virtual because it's a static method.
+        ///     In C#, static methods cannot be virtual or abstract because they belong to the class itself,
+        ///     not an instance of the class.
+        ///     If you need to customize the deserialization behavior, you could consider using a factory pattern
+        ///     or a deserialization strategy pattern.
         /// </summary>
         /// <param name="json">The JSON string representing the Octree.</param>
-        /// <returns>A new instance of the Octree class.</returns>
-        /// <exception cref="Exception">Thrown when the Octree fails to deserialize.</exception>
+        /// <returns>A new instance of the Octree class. If deserialization fails, null is returned.</returns>
         public static Octree<T> FromJson(string json)
         {
             try
             {
+#if NEWTONSOFT_JSON
+        return Newtonsoft.Json.JsonConvert.DeserializeObject<Octree<T>>(json);
+#else
                 return JsonUtility.FromJson<Octree<T>>(json);
+#endif
             }
             catch (Exception e)
             {
-                Debug.LogError("Failed to deserialize Octree: " + e.Message);
+                Debug.LogWarning("Failed to deserialize Octree: " + e.Message);
                 return null;
             }
         }
