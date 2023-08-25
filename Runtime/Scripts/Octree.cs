@@ -6,14 +6,14 @@ using UnityEngine;
 namespace NeatWolf.Spatial.Partitioning
 {
     /// <summary>
-    /// Represents a single node within an Octree containing a position and associated data.
+    ///     Represents a single node within an Octree containing a position and associated data.
     /// </summary>
     /// <typeparam name="T">Type of data contained within the node.</typeparam>
     [Serializable]
     public class OctreeNode<T>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="OctreeNode{T}"/> class with the specified position and data.
+        ///     Initializes a new instance of the <see cref="OctreeNode{T}" /> class with the specified position and data.
         /// </summary>
         /// <param name="position">The position of the node within the space.</param>
         /// <param name="data">The data contained within the node.</param>
@@ -24,22 +24,22 @@ namespace NeatWolf.Spatial.Partitioning
         }
 
         /// <summary>
-        /// Gets the position of the node within the space.
+        ///     Gets the position of the node within the space.
         /// </summary>
         public Vector3 Position { get; private set; }
-        
+
         /// <summary>
-        /// Gets or sets the data contained within the node.
+        ///     Gets or sets the data contained within the node.
         /// </summary>
         public T Data { get; set; }
-        
+
         /// <summary>
-        /// Gets or sets a value indicating whether the node is enabled.
+        ///     Gets or sets a value indicating whether the node is enabled.
         /// </summary>
         public bool Enabled { get; set; } = true;
 
         /// <summary>
-        /// Converts the node to a JSON string.
+        ///     Converts the node to a JSON string.
         /// </summary>
         /// <returns>A JSON string representing the node.</returns>
         public string ToJson()
@@ -48,10 +48,10 @@ namespace NeatWolf.Spatial.Partitioning
         }
 
         /// <summary>
-        /// Creates an instance of the <see cref="OctreeNode{T}"/> class from a JSON string.
+        ///     Creates an instance of the <see cref="OctreeNode{T}" /> class from a JSON string.
         /// </summary>
         /// <param name="json">The JSON string representing the node.</param>
-        /// <returns>A new instance of the <see cref="OctreeNode{T}"/> class.</returns>
+        /// <returns>A new instance of the <see cref="OctreeNode{T}" /> class.</returns>
         public static OctreeNode<T> FromJson(string json)
         {
             return JsonUtility.FromJson<OctreeNode<T>>(json);
@@ -59,38 +59,16 @@ namespace NeatWolf.Spatial.Partitioning
     }
 
     /// <summary>
-    /// Represents a balanced Octree data structure designed to efficiently manage spatial data.
-    /// This implementation is a variant of the standard Octree, optimized for query performance
-    /// and providing dynamic management through configurable parameters like `maxDepth`, `minPoints`,
-    /// and `maxPoints`. The Octree ensures even distribution of points by performing subdivisions
-    /// and merges, preventing unnecessary growth or complexity.
+    ///     Represents a balanced Octree data structure designed to efficiently manage spatial data.
+    ///     This implementation is a variant of the standard Octree, optimized for query performance
+    ///     and providing dynamic management through configurable parameters like `maxDepth`, `minPoints`,
+    ///     and `maxPoints`. The Octree ensures even distribution of points by performing subdivisions
+    ///     and merges, preventing unnecessary growth or complexity.
     /// </summary>
     /// <typeparam name="T">Type of data contained within the nodes of the Octree.</typeparam>
     [Serializable]
     public class Octree<T>
     {
-        private const int MAX_INSERTION_ATTEMPTS = 1000; // Class constant to prevent infinite loop
-        
-        /// <summary>
-        /// Gets the origin of the Octree.
-        /// </summary>
-        public Vector3 Origin => origin;
-        
-        /// <summary>
-        /// Gets the half dimensions of the Octree.
-        /// </summary>
-        public Vector3 HalfDimension => halfDimension;
-        
-        /// <summary>
-        /// Gets the child Octrees.
-        /// </summary>
-        public Octree<T>[] Children { get; }
-        
-        /// <summary>
-        /// Gets the nodes within this Octree.
-        /// </summary>
-        public List<OctreeNode<T>> Nodes { get; }
-
         [SerializeField] private int depth;
         [SerializeField] private Vector3 halfDimension;
         [SerializeField] private int maxDepth;
@@ -99,7 +77,7 @@ namespace NeatWolf.Spatial.Partitioning
         [SerializeField] private Vector3 origin;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Octree{T}"/> class with the specified parameters.
+        ///     Initializes a new instance of the <see cref="Octree{T}" /> class with the specified parameters.
         /// </summary>
         /// <param name="origin">The origin of the Octree.</param>
         /// <param name="halfDimension">The half dimensions of the Octree.</param>
@@ -119,7 +97,27 @@ namespace NeatWolf.Spatial.Partitioning
         }
 
         /// <summary>
-        /// Determines whether this Octree is a leaf node.
+        ///     Gets the origin of the Octree.
+        /// </summary>
+        public Vector3 Origin => origin;
+
+        /// <summary>
+        ///     Gets the half dimensions of the Octree.
+        /// </summary>
+        public Vector3 HalfDimension => halfDimension;
+
+        /// <summary>
+        ///     Gets the child Octrees.
+        /// </summary>
+        public Octree<T>[] Children { get; }
+
+        /// <summary>
+        ///     Gets the nodes within this Octree.
+        /// </summary>
+        public List<OctreeNode<T>> Nodes { get; }
+
+        /// <summary>
+        ///     Determines whether this Octree is a leaf node.
         /// </summary>
         /// <returns><c>true</c> if this Octree is a leaf node; otherwise, <c>false</c>.</returns>
         public bool IsLeafNode()
@@ -128,7 +126,7 @@ namespace NeatWolf.Spatial.Partitioning
         }
 
         /// <summary>
-        /// Inserts a node with the specified position and data into the Octree.
+        ///     Inserts a node with the specified position and data into the Octree.
         /// </summary>
         /// <param name="position">The position of the node.</param>
         /// <param name="data">The data of the node.</param>
@@ -147,20 +145,16 @@ namespace NeatWolf.Spatial.Partitioning
             {
                 var childOctree = GetOctantContainingPoint(position);
                 if (childOctree != null)
-                {
                     childOctree.Insert(position, data);
-                }
                 else
-                {
                     // Handle case where no child Octree contains the point
                     // This could involve creating a new child Octree, or inserting the node into this Octree
                     Debug.LogWarning("Octree insert: no child Octree contains the point");
-                }
             }
         }
 
         /// <summary>
-        /// Removes the node at the specified position from the Octree.
+        ///     Removes the node at the specified position from the Octree.
         /// </summary>
         /// <param name="position">The position of the node.</param>
         public void Remove(Vector3 position)
@@ -168,10 +162,7 @@ namespace NeatWolf.Spatial.Partitioning
             if (IsLeafNode())
             {
                 var index = Nodes.FindIndex(node => node.Position == position);
-                if (index >= 0)
-                {
-                    Nodes.RemoveAt(index);
-                }
+                if (index >= 0) Nodes.RemoveAt(index);
             }
             else
             {
@@ -182,10 +173,7 @@ namespace NeatWolf.Spatial.Partitioning
                     {
                         childOctree.Remove(position);
 
-                        if (ShouldMerge())
-                        {
-                            Merge();
-                        }
+                        if (ShouldMerge()) Merge();
                     }
                 }
                 else
@@ -198,24 +186,20 @@ namespace NeatWolf.Spatial.Partitioning
         }
 
         /// <summary>
-        /// Determines whether the Octree should merge its child Octrees.
+        ///     Determines whether the Octree should merge its child Octrees.
         /// </summary>
         /// <returns><c>true</c> if the Octree should merge its child Octrees; otherwise, <c>false</c>.</returns>
         private bool ShouldMerge()
         {
             foreach (var child in Children)
-            {
                 if (child != null && child.Nodes.Count > 0)
-                {
                     return false;
-                }
-            }
 
             return true;
         }
 
         /// <summary>
-        /// Queries the Octree for a node at the specified position.
+        ///     Queries the Octree for a node at the specified position.
         /// </summary>
         /// <param name="position">The position to query.</param>
         /// <returns>The node at the specified position, or <c>null</c> if no node exists at the position.</returns>
@@ -228,15 +212,16 @@ namespace NeatWolf.Spatial.Partitioning
                         return node;
 
                 var octant = GetOctantContainingPoint(position);
-                return octant != null ? octant.Query(position) : null;
+                //return octant != null ? octant.Query(position) : null;
+                return octant?.Query(position);
             }
 
             return null;
         }
 
         /// <summary>
-        /// Performs a sphere cast on the Octree and returns all nodes within the specified radius of the center.
-        /// This method may return duplicate nodes if the same node is contained in multiple child Octrees.
+        ///     Performs a sphere cast on the Octree and returns all nodes within the specified radius of the center.
+        ///     This method may return duplicate nodes if the same node is contained in multiple child Octrees.
         /// </summary>
         /// <param name="center">The center of the sphere cast.</param>
         /// <param name="radius">The radius of the sphere cast.</param>
@@ -249,17 +234,15 @@ namespace NeatWolf.Spatial.Partitioning
                     result.Add(node);
 
             if (!IsLeafNode())
-            {
                 foreach (var child in Children)
                     if (child != null)
                         result.UnionWith(child.SphereCastWithDuplicates(center, radius));
-            }
 
             return result;
         }
-        
+
         /// <summary>
-        /// Performs a sphere cast on the Octree and returns all nodes within the specified radius of the center.
+        ///     Performs a sphere cast on the Octree and returns all nodes within the specified radius of the center.
         /// </summary>
         /// <param name="center">The center of the sphere cast.</param>
         /// <param name="radius">The radius of the sphere cast.</param>
@@ -272,17 +255,15 @@ namespace NeatWolf.Spatial.Partitioning
                     result.Add(node);
 
             if (!IsLeafNode())
-            {
                 foreach (var child in Children)
                     if (child != null)
                         result.AddRange(child.SphereCast(center, radius));
-            }
 
             return result;
         }
 
         /// <summary>
-        /// Finds the nearest node to the specified position.
+        ///     Finds the nearest node to the specified position.
         /// </summary>
         /// <param name="position">The position to find the nearest node to.</param>
         /// <returns>The nearest node to the specified position, or <c>null</c> if no nodes exist in the Octree.</returns>
@@ -301,7 +282,6 @@ namespace NeatWolf.Spatial.Partitioning
             }
 
             if (!IsLeafNode())
-            {
                 foreach (var child in Children)
                 {
                     var childNearestNode = child.FindNearestNode(position);
@@ -311,16 +291,16 @@ namespace NeatWolf.Spatial.Partitioning
                         if (childNearestDistance < nearestDistance)
                         {
                             nearestNode = childNearestNode;
+                            nearestDistance = childNearestDistance; // Update nearestDistance
                         }
                     }
                 }
-            }
 
             return nearestNode;
         }
 
         /// <summary>
-        /// Finds the nearest enabled node to the specified position.
+        ///     Finds the nearest enabled node to the specified position.
         /// </summary>
         /// <param name="position">The position to find the nearest enabled node to.</param>
         /// <param name="enabledStatus">The enabled status to match. Defaults to <c>true</c>.</param>
@@ -341,7 +321,6 @@ namespace NeatWolf.Spatial.Partitioning
                 }
 
             if (!IsLeafNode())
-            {
                 foreach (var child in Children)
                 {
                     var childNearestNode = child.FindNearestEnabledNode(position, enabledStatus);
@@ -351,49 +330,39 @@ namespace NeatWolf.Spatial.Partitioning
                         if (childNearestDistance < nearestDistance)
                         {
                             nearestNode = childNearestNode;
+                            nearestDistance = childNearestDistance; // Update nearestDistance
                         }
                     }
                 }
-            }
 
             return nearestNode;
         }
 
         /// <summary>
-        /// Determines whether a node exists at the specified position.
+        ///     Determines whether a node exists at the specified position.
         /// </summary>
         /// <param name="position">The position to check for a node.</param>
         /// <returns><c>true</c> if a node exists at the specified position; otherwise, <c>false</c>.</returns>
         public bool NodeExistsAt(Vector3 position)
         {
-            if (Query(position) != null)
-            {
-                return true;
-            }
+            if (Query(position) != null) return true;
 
             if (!IsLeafNode())
-            {
                 foreach (var child in Children)
-                {
                     if (child.NodeExistsAt(position))
-                    {
                         return true;
-                    }
-                }
-            }
 
             return false;
         }
 
         /// <summary>
-        /// Subdivides the Octree into eight child Octrees.
+        ///     Subdivides the Octree into eight child Octrees.
+        ///     This method is used when the number of nodes in the Octree exceeds the maximum limit.
+        ///     Each child Octree represents an octant of the current Octree.
         /// </summary>
         private void Subdivide()
         {
-            if (depth >= maxDepth)
-            {
-                return;
-            }
+            if (depth >= maxDepth) return;
 
             for (var i = 0; i < 8; i++)
             {
@@ -409,12 +378,14 @@ namespace NeatWolf.Spatial.Partitioning
             Nodes.Clear();
         }
 
+        /// <summary>
+        ///     Merges the child Octrees into the current Octree.
+        ///     This method is used when the number of nodes in the child Octrees is below the minimum limit.
+        ///     All nodes from the child Octrees are moved to the current Octree.
+        /// </summary>
         private void Merge()
         {
-            if (IsLeafNode())
-            {
-                return;
-            }
+            if (IsLeafNode()) return;
 
             foreach (var child in Children)
             {
@@ -423,6 +394,11 @@ namespace NeatWolf.Spatial.Partitioning
             }
         }
 
+        /// <summary>
+        ///     Checks if the Octree contains a point.
+        /// </summary>
+        /// <param name="point">The point to check.</param>
+        /// <returns>True if the Octree contains the point, false otherwise.</returns>
         private bool ContainsPoint(Vector3 point)
         {
             return point.x >= origin.x - halfDimension.x && point.x <= origin.x + halfDimension.x &&
@@ -430,6 +406,11 @@ namespace NeatWolf.Spatial.Partitioning
                    point.z >= origin.z - halfDimension.z && point.z <= origin.z + halfDimension.z;
         }
 
+        /// <summary>
+        ///     Gets the child Octree (octant) that contains the point.
+        /// </summary>
+        /// <param name="point">The point to check.</param>
+        /// <returns>The child Octree that contains the point, or null if no child Octree contains the point.</returns>
         private Octree<T> GetOctantContainingPoint(Vector3 point)
         {
             var index = 0;
@@ -438,7 +419,12 @@ namespace NeatWolf.Spatial.Partitioning
             if (point.z > origin.z) index |= 4;
             return Children[index] != null ? Children[index] : null;
         }
-        
+
+        /// <summary>
+        ///     Converts the Octree to a JSON string.
+        /// </summary>
+        /// <returns>A JSON string representing the Octree.</returns>
+        /// <exception cref="Exception">Thrown when the Octree fails to serialize.</exception>
         public string ToJson()
         {
             try
@@ -452,6 +438,12 @@ namespace NeatWolf.Spatial.Partitioning
             }
         }
 
+        /// <summary>
+        ///     Creates an instance of the Octree class from a JSON string.
+        /// </summary>
+        /// <param name="json">The JSON string representing the Octree.</param>
+        /// <returns>A new instance of the Octree class.</returns>
+        /// <exception cref="Exception">Thrown when the Octree fails to deserialize.</exception>
         public static Octree<T> FromJson(string json)
         {
             try
